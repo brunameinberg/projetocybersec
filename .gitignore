@@ -6,3 +6,5 @@ terraform.tfstate.backup
 .terraform/
 
 *.pem
+
+terraform.tfvars
