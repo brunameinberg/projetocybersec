@@ -2,18 +2,25 @@ resource "aws_security_group" "ABCplace_sg" {
   vpc_id = aws_vpc.ABCplace_vpc.id
   name   = "ABCplace_SecurityGroup"
 
-  # SSH (porta 22)
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  
-  }
+  # SSH (porta 22) - descomentar caso necessário. para mais segurança, colocar o prórpio ip
+  #ingress {
+  #  from_port   = 22
+  #  to_port     = 22
+  #  protocol    = "tcp"
+  #  cidr_blocks = ["0.0.0.0/0"]  
+  #}
 
   # Apache
   ingress {
     from_port   = 80
     to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]  
+  }
+
+  ingress {
+    from_port   = 443
+    to_port     = 443
     protocol    = "tcp"
     cidr_blocks = ["0.0.0.0/0"]  
   }
@@ -41,12 +48,13 @@ resource "aws_security_group" "ABCplace_db_sg" {
     security_groups = [aws_security_group.ABCplace_sg.id]
   }
 
-  ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]  
-  }
+  # SSH (porta 22) - descomentar caso necessário. para mais segurança, colocar o prórpio ip
+  #ingress {
+  #  from_port   = 22
+  #  to_port     = 22
+  #  protocol    = "tcp"
+  #  cidr_blocks = ["0.0.0.0/0"]  
+  #}
 
   egress {
     from_port   = 0
