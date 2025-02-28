@@ -11,10 +11,13 @@ apt-get install -y apache2 php php-curl php-gd php-mbstring php-xml php-xmlrpc p
 # Habilitando o mod_rewrite do Apache
 a2enmod rewrite
 
+# Instalando Certbot para SSL
+apt-get install -y certbot python3-certbot-apache
+
 # Criando configuração do Apache para o domínio
 cat <<EOT > /etc/apache2/sites-available/abcplace.conf
 <VirtualHost *:80>
-    ServerAdmin admin@abcplace.com
+    ServerAdmin ${wp_admin_email}
     ServerName abcplace.blog.br
     ServerAlias www.abcplace.blog.br
     DocumentRoot /var/www/html
@@ -28,11 +31,57 @@ cat <<EOT > /etc/apache2/sites-available/abcplace.conf
 </VirtualHost>
 EOT
 
-
-
+# Ativar site HTTP e reiniciar Apache
 a2dissite 000-default.conf
 a2ensite abcplace.conf
+systemctl restart apache2
+
+# Parar Apache antes de rodar o Certbot
+systemctl stop apache2
+
+# Gerar certificado SSL com Certbot no modo standalone
+certbot certonly --standalone --force-renewal --agree-tos -m ${wp_admin_email} -d abcplace.blog.br -d www.abcplace.blog.br
+
+
+cat <<EOT > /etc/apache2/sites-available/abcplace-ssl.conf
+<VirtualHost *:443>
+    ServerAdmin ${wp_admin_email}
+    ServerName abcplace.blog.br
+    ServerAlias www.abcplace.blog.br
+    DocumentRoot /var/www/html
+
+    <Directory /var/www/html>
+        AllowOverride All
+    </Directory>
+
+    SSLEngine on
+    SSLCertificateFile /etc/letsencrypt/live/abcplace.blog.br/fullchain.pem
+    SSLCertificateKeyFile /etc/letsencrypt/live/abcplace.blog.br/privkey.pem
+
+    ErrorLog /var/log/apache2/error.log
+    CustomLog /var/log/apache2/access.log combined
+</VirtualHost>
+EOT
+
+# Ativar SSL no Apache
+a2enmod ssl
+a2ensite abcplace-ssl.conf
+systemctl restart apache2
+
+# Redirecionando HTTP para HTTPS
+cat <<EOT > /etc/apache2/sites-available/redirect.conf
+<VirtualHost *:80>
+    ServerName abcplace.blog.br
+    ServerAlias www.abcplace.blog.br
+    Redirect permanent / https://abcplace.blog.br/
+</VirtualHost>
+EOT
+
+
+# Ativar redirecionamento e reiniciar Apache
+a2ensite redirect.conf
 systemctl reload apache2
+
 
 # Baixando e instalando o WordPress
 cd /var/www/html
@@ -97,14 +146,5 @@ sudo -u www-data wp plugin install woocommerce --activate
 # Criando as páginas padrão do WooCommerce
 sudo -u www-data wp wc tool run install_pages
 
-# Instalando e ativando o WooCommerce automaticamente
-cd /var/www/html
-sudo -u www-data wp plugin install woocommerce --activate
-sudo -u www-data wp wc tool run install_pages
-
-# Instalando Certbot para SSL
-apt-get install -y certbot python3-certbot-apache
-certbot --apache -d abcplacebruna.com -d www.abcplacebruna.com --non-interactive --agree-tos -m admin@abcplace.com
-
-# Reiniciando o Apache após SSL
+# Reiniciando Apache para garantir que tudo está rodando corretamente
 systemctl restart apache2
